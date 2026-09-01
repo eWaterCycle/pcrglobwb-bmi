@@ -1,7 +1,7 @@
 FROM mambaorg/micromamba:1.3.1
 
 LABEL maintainer="Andre van der Veen <A.B.vanderVeen-1@student.tudelft.nl>" 
-LABEL version="0.1"
+LABEL version="0.2"
 
 # Copy the environment.yml first
 COPY environment.yml /tmp/environment.yml
@@ -34,9 +34,13 @@ WORKDIR /usr/src/app
 # Install your package (if needed)
 RUN pip install .
 
+COPY --chown=root:root . /usr/src/app
+
+WORKDIR /usr/src/app/model
+
+USER root
 
 # Compile imagemean.pyx
-WORKDIR /usr/src/app/model
 RUN cythonize -i imagemean.pyx
 
 

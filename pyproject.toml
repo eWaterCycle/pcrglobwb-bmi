@@ -5,8 +5,8 @@ requires = [
 build-backend = "hatchling.build"
 
 [project]
-name = "bmi-pcrglobwb"
-version = "0.1.0"
+name = "ewatercycle-pcrglobwb-grpc4bmi"
+version = "0.2.0"
 description = "Python 3 port of PCR-GLOBWB + BMI"
 authors = [
     { name = "A.B. van der Veen" }
