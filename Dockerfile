@@ -1,5 +1,8 @@
 FROM mambaorg/micromamba:1.3.1
 
+# Here you can point to the source repository of this Dockerfile:
+LABEL org.opencontainers.image.source="https://github.com/eWaterCycle/pcrglobwb-bmi"
+
 LABEL maintainer="Andre van der Veen <A.B.vanderVeen-1@student.tudelft.nl>" 
 LABEL version="0.2"
 
