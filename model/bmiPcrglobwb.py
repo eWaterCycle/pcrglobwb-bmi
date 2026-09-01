@@ -13,6 +13,7 @@ from reporting import Reporting
 from imagemean import downsample
 from bmi import EBmi
 from bmi import BmiGridType
+import virtualOS as vos
 import datetime
 
 
@@ -697,6 +698,8 @@ class BmiPCRGlobWB(EBmi):
 
         if long_var_name == "near_surface_soil_saturation_degree":
             self.set_satDegUpp000005(src)
+        elif long_var_name == "upper_soil_saturation_degree":
+            self.set_satDegUpp(src)
         elif long_var_name == "channel_storage":
             self.set_channel_storage(src)
         elif long_var_name == "discharge":
@@ -735,6 +738,74 @@ class BmiPCRGlobWB(EBmi):
         self.model.routing.discharge = discharge
 
         self.reporting.discharge = pcr.ifthen(self.model.routing.landmask, self.model.routing.discharge)
+
+    def set_satDegUpp(self, src): #https://github.com/eWaterCycle/PCR-GLOBWB_model/blob/bmi_fixes_setters/model/bmiPcrglobwb.py#L368
+        mask = np.isnan(src)
+        src[mask] = 1e20
+        observed_satDegUpp = pcr.numpy2pcr(pcr.Scalar, src, 1e20)
+
+        pcr.report(observed_satDegUpp, "observed.map")
+
+        constrained_satDegUpp = pcr.min(1.0, pcr.max(0.0, observed_satDegUpp))
+
+        pcr.report(constrained_satDegUpp, "constrained.map")
+
+        pcr.report(self.model.landSurface.satDegUpp, "origmap.map")
+        diffmap = constrained_satDegUpp - self.model.landSurface.satDegUpp
+        pcr.report(diffmap, "diffmap.map")
+
+        # ratio between observation and model
+        ratio_between_observation_and_model = pcr.ifthenelse(self.model.landSurface.satDegUpp > 0.0,
+                                                             constrained_satDegUpp / \
+                                                             self.model.landSurface.satDegUpp, 0.0)
+
+        # updating upper soil states for all lad cover types
+        ls=self.model.landSurface
+        for coverType in ls.coverTypes:
+            lco=ls.landCoverObj[coverType]
+            # correcting upper soil state (storUpp)
+            lco.storUpp *= ratio_between_observation_and_model
+
+            # if model value = 0.0, storUpp000005 is calculated based on storage capacity (model parameter) and observed saturation degree   
+            lco.storUpp = pcr.ifthenelse(
+                ls.satDegUpp > 0.0, 
+                lco.storUpp, 
+                constrained_satDegUpp * lco.parameters.storCapUpp)
+            # correct for any scaling issues (value < 0 or > 1 do not make sense
+            lco.storUpp = pcr.min(1.0, pcr.max(0.0, lco.storUpp))
+            lco.satDegUpp = vos.getValDivZero(
+                  lco.storUpp, 
+                  lco.parameters.storCapUpp,\
+                  vos.smallNumber,0.)
+            lco.satDegUpp = pcr.ifthen(
+             lco.landmask, 
+             lco.satDegUpp)
+            lco.satDegUppTotal=lco.satDegUpp
+            lco.storUppTotal=lco.storUpp
+
+        # after updating we need to propagate the changes to the dependend variables
+        # proper way to do this would be to implement a state model...(see AMUSE/OMUSE) 
+
+        self.model.landSurface.storUpp=pcr.scalar(0.0)
+        self.model.landSurface.satDegUpp=pcr.scalar(0.0)
+        self.model.landSurface.storUppTotal=pcr.scalar(0.0)
+        self.model.landSurface.satDegUppTotal=pcr.scalar(0.0)
+        
+        for coverType in ls.coverTypes:
+            lco=ls.landCoverObj[coverType]
+            land_cover_fraction = lco.fracVegCover
+            land_cover_storUpp = lco.storUpp
+            land_cover_satDegUpp = lco.satDegUpp
+            land_cover_storUppTotal = lco.storUppTotal
+            land_cover_satDegUppTotal = lco.satDegUppTotal
+            self.model.landSurface.storUpp+= land_cover_fraction * land_cover_storUpp
+            self.model.landSurface.satDegUpp+= land_cover_fraction * land_cover_satDegUpp
+            self.model.landSurface.storUppTotal+= land_cover_fraction * land_cover_storUppTotal
+            self.model.landSurface.satDegUppTotal+= land_cover_fraction * land_cover_satDegUppTotal
+            # more needed?
+
+        self.reporting.satDegUpp=self.model.landSurface.satDegUppTotal
+        self.reporting.storUpp=self.model.landSurface.storUppTotal
 
 
     
