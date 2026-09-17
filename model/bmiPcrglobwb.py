@@ -32,6 +32,7 @@ class BmiPCRGlobWB(EBmi):
         # return pcr.pcr2numpy(self.model.landmask, 1e20).shape
         return (pcr.clone().nrRows(), pcr.clone().nrCols())
 
+
     #BMI initialize (as a single step)
     def initialize(self, fileName):
         self.initialize_config(fileName)
@@ -623,8 +624,10 @@ class BmiPCRGlobWB(EBmi):
 
         # shape[0] = nrows
         # shape[1] = ncols
-    def get_grid_x(self, grid: int, x: np.ndarray) -> np.ndarray:
-        logging.warning("if you see this, get_grid_x is called")    
+
+    
+    def get_grid_y(self, grid: int, x: np.ndarray) -> np.ndarray:
+        #logging.warning("if you see this, get_grid_x is called")    
         north = pcr.clone().north()
         cellSize = pcr.clone().cellSize()
         nrRows = pcr.clone().nrRows()
@@ -634,7 +637,7 @@ class BmiPCRGlobWB(EBmi):
         # logging.warning("if you see this swap XY happend")
         # raise NotImplementedError("if you see this swap XY happend") 
 
-    def get_grid_y(self, grid: int, y: np.ndarray) -> np.ndarray:  #https://github.com/eWaterCycle/PCR-GLOBWB_model/blob/bmi_fixes_setters/model/bmiPcrglobwb.py
+    def get_grid_x(self, grid: int, y: np.ndarray) -> np.ndarray:  #https://github.com/eWaterCycle/PCR-GLOBWB_model/blob/bmi_fixes_setters/model/bmiPcrglobwb.py
         west = pcr.clone().west()
         spacing=pcr.clone().cellSize()
         return west+spacing*(np.arange(self.shape[1])+0.5)
