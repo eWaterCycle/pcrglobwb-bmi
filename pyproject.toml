@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pcrglobwb2"
-version = "0.2.0"
+version = "0.2.2"
 description = "Python 3 port of PCR-GLOBWB + BMI"
 authors = [
     { name = "A.B. van der Veen" }
