@@ -1,10 +1,10 @@
-FROM mambaorg/micromamba:1.3.1
+FROM mambaorg/micromamba:1.5.10
 
 # Here you can point to the source repository of this Dockerfile:
 LABEL org.opencontainers.image.source="https://github.com/eWaterCycle/pcrglobwb-bmi"
 
 LABEL maintainer="Andre van der Veen <A.B.vanderVeen-1@student.tudelft.nl>" 
-LABEL version="0.2"
+LABEL version="0.2.2"
 
 # Copy the environment.yml first
 COPY environment.yml /tmp/environment.yml
@@ -37,7 +37,6 @@ WORKDIR /usr/src/app
 # Install your package (if needed)
 RUN pip install .
 
-COPY --chown=root:root . /usr/src/app
 
 WORKDIR /usr/src/app/model
 
