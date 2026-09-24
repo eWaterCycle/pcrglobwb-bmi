@@ -4,7 +4,7 @@ FROM mambaorg/micromamba:1.5.10
 LABEL org.opencontainers.image.source="https://github.com/eWaterCycle/pcrglobwb-bmi"
 
 LABEL maintainer="Andre van der Veen <A.B.vanderVeen-1@student.tudelft.nl>" 
-LABEL version="0.2.2"
+LABEL version="0.2.3"
 
 # Copy the environment.yml first
 COPY environment.yml /tmp/environment.yml

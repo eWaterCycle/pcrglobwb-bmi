@@ -370,11 +370,6 @@ class BmiPCRGlobWB(EBmi):
         self.model.update(report_water_balance=True)
         self.reporting.report()
 
-    #         #numpy = pcr.pcr2numpy(self.model.landSurface.satDegUpp000005, 1e20)
-    #         numpy = pcr.pcr2numpy(self.model.landSurface.satDegUpp000005, np.NaN)
-    #         print numpy.shape
-    #         print numpy
-
 
     def update_until(self, time):
         while self.get_current_time() + 0.001 < time:
@@ -390,26 +385,59 @@ class BmiPCRGlobWB(EBmi):
         return "pcrglobwb"
 
     def get_input_var_names(self):
-        return ["top_layer_soil_saturation"]
+        input_var_names = ["channel_storage"]  # discharge can be here, but does not work in current form
+        if self.model.landSurface.numberOfSoilLayers == 3:
+            input_var_names.append("near_surface_soil_saturation_degree")
+        if self.model.landSurface.numberOfSoilLayers == 2:
+            input_var_names.append("upper_soil_saturation_degree")
+        return input_var_names
 
     def get_output_var_names(self):
-        return ["top_layer_soil_saturation"]
+        netcdf_short_name = variable_list.netcdf_short_name.copy()
+        if self.model.landSurface.numberOfSoilLayers != 3:
+            netcdf_short_name.pop("satDegUppSurface")
+            netcdf_short_name.pop("storUppSurface")
+            netcdf_short_name.pop("storUpp000005")
+            netcdf_short_name.pop("storUpp005030")
+            netcdf_short_name.pop("storLow030150")
+        if not self.model.routing.floodPlain:
+            netcdf_short_name.pop("floodDepth")
+            netcdf_short_name.pop("floodVolume")
+        if not "land_surface_water_balance" in self.reporting.variables_for_report:
+            netcdf_short_name.pop("land_surface_water_balance")
+        # modflow variables
+        netcdf_short_name.pop("groundwaterHeadLayer1")
+        netcdf_short_name.pop("groundwaterHeadLayer2")
+        netcdf_short_name.pop("groundwaterDepthLayer1")
+        netcdf_short_name.pop("groundwaterDepthLayer2")
+        netcdf_short_name.pop("groundwaterHead")
+        netcdf_short_name.pop("groundwaterDepth")
+        netcdf_short_name.pop("relativeGroundwaterHead")
+        netcdf_short_name.pop("groundwaterVolumeEstimate")
+        netcdf_short_name.pop("groundwaterThicknessEstimate")
+        netcdf_short_name.pop("top_uppermost_layer")
+        netcdf_short_name.pop("bottom_uppermost_layer")
+        netcdf_short_name.pop("bottom_lowermost_layer")
+        # random stuff not available/implemented (yet?)
+        netcdf_short_name.pop("test")
+        netcdf_short_name.pop("accuRunoff")
+        netcdf_short_name.pop("accuTotalRunoff")
+        netcdf_short_name.pop("irrWaterConsumption")
+        netcdf_short_name.pop("irrReturnFlow")
+        return list(netcdf_short_name.values())
 
     def get_var_type(self, long_var_name):
         return 'float64'
 
-    def get_var_units(self, long_var_name):
-        #TODO: this is not a proper unit
-        return '1'
+    def get_var_units(self, var_name):
+        attribute = [n for n in variable_list.netcdf_short_name if variable_list.netcdf_short_name[n] == var_name][0]
+        return variable_list.netcdf_unit[attribute]
 
     def get_var_rank(self, long_var_name):
-        return 0
-
-    # def get_var_size(self, long_var_name):
-    #     return np.prod(self.get_grid_shape(long_var_name))
+        return 1
 
     def get_var_nbytes(self, long_var_name):
-        return self.get_var_size(long_var_name) * np.dtype(np.float64).itemsize
+        return self.get_var_size(long_var_name) * self.get_var_itemsize(long_var_name)
 
     def get_start_time(self):
         return self.days_since_industry_epoch(self.model_time.startTime)
@@ -424,57 +452,13 @@ class BmiPCRGlobWB(EBmi):
         return 1
 
     def get_time_units(self):
-        return "Days since 1901-01-01"
+        return "days since 1901-01-01"
 
-    # def get_value(self, long_var_name):
-    #     logger.info("getting value for var %s", long_var_name)
-
-    #     if (long_var_name == "top_layer_soil_saturation"):
-
-    #         if self.model is not None and hasattr(self.model.landSurface, 'satDegUpp000005'):
-
-    #             #first make all NanS into 0.0 with cover, then cut out the model using the landmask.
-    #             # This should not actually make a difference.
-    #             remasked = pcr.ifthen(self.model.landmask, pcr.cover(self.model.landSurface.satDegUpp000005, 0.0))
-
-    #             pcr.report(self.model.landSurface.satDegUpp000005, "value.map")
-    #             pcr.report(remasked, "remasked.map")
-
-    #             value = pcr.pcr2numpy(remasked, np.NaN)
-
-    #         else:
-    #             logger.info("model has not run yet, returning empty state for top_layer_soil_saturation")
-    #             value = pcr.pcr2numpy(pcr.scalar(0.0), np.NaN)
-
-    #         # print "getting var", value
-    #         # sys.stdout.flush()
-
-    #         doubles = value.astype(np.float64)
-
-    #         # print "getting var as doubles!!!!", doubles
-
-    #         result = np.flipud(doubles)
-
-    #         # print "getting var as doubles flipped!!!!", result
-    #         # sys.stdout.flush()
-
-    #         return result
-    #     else:
-    #         raise Exception("unknown var name" + long_var_name)
-
-    def get_value_at_indices(self, long_var_name, inds):
-        raise NotImplementedError
-
-    #     def get_satDegUpp000005_from_observation(self):
-    #
-    #         # assumption for observation values
-    #         # - this should be replaced by values from the ECV soil moisture value (sattelite data)
-    #         # - uncertainty should be included here
-    #         # - note that the value should be between 0.0 and 1.0
-    #         observed_satDegUpp000005 = pcr.min(1.0,\
-    #                                    pcr.max(0.0,\
-    #                                    pcr.normal(pcr.boolean(1)) + 1.0))
-    #         return observed_satDegUpp000005
+    def get_value_at_indices(self, long_var_name, dest, inds):
+        tmp = np.empty(self.get_var_size(long_var_name), dtype=np.float64)
+        self.get_value(long_var_name, tmp)
+        dest[:] = tmp[inds]
+        return dest
 
     def set_satDegUpp000005(self, src):
         mask = np.isnan(src)
@@ -505,16 +489,53 @@ class BmiPCRGlobWB(EBmi):
             self.model.landSurface.landCoverObj[coverType].storUpp000005 = pcr.ifthenelse(
                 self.model.landSurface.satDegUpp000005 > 0.0, \
                 self.model.landSurface.landCoverObj[coverType].storUpp000005, \
-                constrained_satDegUpp000005 * self.model.landSurface.parameters.storCapUpp000005)
+                constrained_satDegUpp000005 * self.model.landSurface.landCoverObj[coverType].parameters.storCapUpp000005)
             # correct for any scaling issues (value < 0 or > 1 do not make sense
             self.model.landSurface.landCoverObj[coverType].storUpp000005 = pcr.min(1.0, pcr.max(0.0,
                                                                                                 self.model.landSurface.landCoverObj[
                                                                                                     coverType].storUpp000005))
 
+    def set_precipitation(self, src):
+        mask = np.isnan(src)
+        src[mask] = 1e20
+        precipitation = pcr.numpy2pcr(pcr.Scalar, src, 1e20)
 
+        precipitation = pcr.ifthen(self.model.meteo.landmask, precipitation)
+        # -----------------------------------------------------------------------
+
+        # make sure that precipitation is always positive
+        precipitation = pcr.max(0., precipitation)
+        precipitation = pcr.cover(precipitation, 0.0)
+
+        # ignore very small values of precipitation (less than 0.00001 m/day or less than 0.01 kg.m-2.day-1 )
+        if self.model.meteo.usingDailyTimeStepForcingData:
+            precipitation = pcr.rounddown(precipitation * 100000.) / 100000.
+
+        self.model.meteo.precipitation = precipitation
+
+        self.reporting.precipitation = pcr.ifthen(self.model.routing.landmask, self.model.meteo.precipitation)
+
+        # update derived tbd
+
+    def set_temperature(self, src):
+        mask = np.isnan(src)
+        src[mask] = 1e20
+        temperature = pcr.numpy2pcr(pcr.Scalar, src, 1e20)
+
+        temperature = pcr.ifthen(self.model.meteo.landmask, temperature)
+        # -----------------------------------------------------------------------
+
+        temperature = pcr.max(0., temperature)
+        temperature = pcr.cover(temperature, 0.0)
+
+        self.model.meteo.temperature = temperature
+        self.reporting.temperature  = pcr.ifthen(self.model.routing.landmask, self.model.meteo.temperature)
 
     def set_value_at_indices(self, long_var_name, inds, src):
-        raise NotImplementedError
+        tmp = np.empty(self.get_var_size(long_var_name), dtype=np.float64)
+        self.get_value(long_var_name, tmp)
+        tmp[inds] = src
+        self.set_value(long_var_name, tmp)
 
     def get_grid_spacing(self, long_var_name):
 
@@ -613,7 +634,7 @@ class BmiPCRGlobWB(EBmi):
     def get_grid_shape(self, grid: int, shape: np.ndarray): #https://bmi.csdms.io/en/stable/bmi.grid_funcs.html#get-grid-shape
         if grid != 0:
             raise ValueError(f"Invalid grid: {grid}, debug: should be 0?")   #test
-        return self.shape    #ToDo first thing tomorrow, must be self.shape?
+        return self.shape
         
         # should return(?) [rows,columns] = [ny,nx] but has ->None
         # shape[0] = pcr.clone().nrRows()  #rows = ny
